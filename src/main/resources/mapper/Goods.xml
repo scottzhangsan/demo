@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.atguigu.crud.dao.GoodsMapper">
+
+
+<update id="updateGoodsUseCAS" parameterType="com.atguigu.crud.bean.Goods">
+    <![CDATA[
+        update t_goods
+        set status=#{status},name=#{name},version=version+1
+        where id=#{id} and version=#{version}
+    ]]>
+</update>
+
+<select id="getGoodsById" resultType="com.atguigu.crud.bean.Goods" parameterType="int">
+select * from t_goods where id=#{id}
+</select>
+  
+</mapper>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.atguigu.crud.dao.LogMapper">
+  <!-- 添加用户信息 -->
+  
+  
+  
+  <!--  keyProperty表示把查询到的值赋值给User的id属性-->
+  <insert id="insert" parameterType="com.atguigu.crud.bean.LogTestBean" >
+  <selectKey keyProperty="id" resultType="int" order="BEFORE">
+  select last_insert_id()
+  </selectKey>
+  
+  insert into log (id,name) values (#{id},#{name})
+  
+  </insert>
+  <!-- mybatis调用存储过程 -->
+  
+  <insert id="insertPro" parameterType="int">
+  
+  call insertlog(#{0})
+  
+  </insert>
+  
+</mapper>

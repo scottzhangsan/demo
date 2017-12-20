@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.atguigu.crud.dao.UserMapper">
+  <!-- 添加用户信息 -->
+  
+  <!--  keyProperty表示把查询到的值赋值给User的id属性-->
+  <insert id="insertUser" parameterType="com.atguigu.crud.bean.User" >
+  <selectKey keyProperty="ids" resultType="int" order="BEFORE">
+  select last_insert_id()
+  </selectKey>
+  
+  insert into user (id,username,birthday,sex,address) values (#{ids},#{username},#{birthday},#{sex},#{address})
+  
+  </insert>
+  
+  <!-- 动态SQL where的应用-->
+  
+  <select id="getUserByName" parameterType="com.atguigu.crud.bean.User" resultType="com.atguigu.crud.bean.User">
+  
+  select * from user <where>
+  <if test="username!=null and username!=''">
+  and username like concat('%',#{username},'%')
+  </if>
+  
+  </where>
+  
+  </select>
+  
+  
+  <!-- foreach -->
+  <select id="getUserByIds" parameterType="com.atguigu.crud.vo.UserVo" resultType="com.atguigu.crud.bean.User">
+  
+  select * from user where username like '%zhang%'
+  
+  <if test="ids!=null and ids.size>0">
+  <foreach collection="ids" open=" and id in(" close=")" item="ide" separator=",">
+   #{ide}
+  </foreach>
+  </if>
+  </select>
+  
+  
+  <!--  #和$的区别-->
+  
+  <!--  通过${}可以将parameterType 传入的内容拼接在sql中且不进行jdbc类型转换， ${}可以接收简单类型值或pojo属性值，如果
+parameterType传输单个简单类型值，${}括号中只能是value。使用${}不能防止sql注入，-->
+  
+  <select id="getUserByNameLike" parameterType="java.lang.String" resultType="com.atguigu.crud.bean.User">
+  
+  select * from user where username like '%${value}%'
+  
+  </select>
+  
+  <!-- 关联查询 一对一-->
+  <resultMap type="com.atguigu.crud.bean.Order" id="orderMap">
+  <id column="id" property="id"/>
+  <result column="number" property="num"/>
+  <association property="user" javaType="com.atguigu.crud.bean.User">
+  <id column="user_id" property="ids" />
+  <result column="username" property="username"/>
+  </association>
+  </resultMap>
+  
+  <select id="getOrdersAndUser" resultMap="orderMap">
+  
+ SELECT a.id id,a.number number, b.id user_id,b.username username,b.address address FROM orders a JOIN USER b ON a.user_id = b.id
+  
+  </select>
+  
+  <!-- 关联查询一对多-->
+  
+  <resultMap id="getOrdersList" type="com.atguigu.crud.bean.Order">
+  <id column="id" property="id"/>
+  <result column="num" property="num"/>
+  <association property="user" javaType="com.atguigu.crud.bean.User">
+  <id column="user_id" property="ids" />
+  <result column="username" property="username"/>
+  </association>
+  <collection property="orderdetails" ofType="com.atguigu.crud.bean.Orderdetail">
+  <id column="orderId" property="id"/>
+<!--   <result column="itemNum" property="itemsNum"/> -->
+  </collection>
+  </resultMap>
+  
+  <select id="getOrderItem" resultMap="getOrdersList">
+  SELECT a.id id,a.number num,b.id user_id,b.username,c.id orderid,c.items_num itemnum FROM orders a JOIN USER b ON a.user_id = b.id JOIN orderdetail c ON a.id = c.orders_id
+  </select>
+  
+  <!--  多对多获取用户信息-->
+  <resultMap id ="usersMap" type="com.atguigu.crud.bean.User">
+  <id column="id" property="ids"/>
+  <result column="username" property="username"/>
+  <collection property="orders" ofType="com.atguigu.crud.bean.Order">
+  <id column="orderId" property="id"/>
+  <result column="num" property="num"/>
+  <collection property="orderdetails" ofType="com.atguigu.crud.bean.Orderdetail">
+  <id column="orderdid" property="id"/>
+  <result column="itemNum" property="itemsNum"/> 
+  <collection property="items" ofType="com.atguigu.crud.bean.Items">
+  <id column="itemid" property="id"/>
+  <result column="price" property="price"/> 
+  <result column="name" property="name"/>
+  </collection>
+  </collection>
+  
+  </collection>
+  </resultMap>
+  <select id="getUserInfo" resultMap="usersMap">
+  SELECT a.id,a.username,b.id orderid,b.number num,c.id orderdid,c.items_num itemnum,d.id itemid,d.name, d.price FROM USER a JOIN orders b ON a.id =b.user_id JOIN orderdetail c ON b.id =c.orders_id JOIN items d ON c.items_id=d.id
+  </select>
+  
+  <!-- mybatis延迟加载 -->
+  
+  <resultMap id="orderMapLa" type="com.atguigu.crud.bean.Order">
+  <id column="id" property="id"/>
+  <!-- <result property="user_id" column="user_id"/> -->
+  <result column="number" property="num"/>
+  <association property="user" javaType="com.atguigu.crud.bean.User" column="user_id" select="getUserById"/>
+  
+  
+  </resultMap>
+  
+  <select id="getUserById" parameterType="int" resultType="com.atguigu.crud.bean.User">
+  
+  SELECT * FROM USER a WHERE a.id =#{value}
+  </select>
+  
+  <select id="getOrders" resultMap="orderMapLa">
+  
+  select id,number,user_id from orders 
+  
+  </select>
+  
+  
+  <!--  获取用户菜单权限-->
+  
+  <select id="getChildMenus" parameterType="java.lang.String" resultType="com.atguigu.crud.bean.Menus">
+  
+      select m.name,m.url,m.pid,m.id
+
+      from users u inner join roleuser ru on u.id=ru.uid
+
+             inner join roles r on ru.rid=r.id
+
+             inner join rolemenu rm on r.id=rm.rid
+
+             inner join menus m on rm.mid=m.id where u.id=#{0}
+  
+  </select>
+  
+  
+  <!-- mybatis参数问题 -->
+  
+  <select id="listById"  resultType="com.atguigu.crud.bean.User">
+        SELECT * FROM user WHERE username=#{username} AND id IN
+        <foreach collection="list" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+</select>
+  
+  <!--  批量插入-->
+  <insert id="insertInToUser">
+  
+  insert into user (username,sex) values
+  <foreach collection="userList" item="user" separator=",">
+    (#{user.username},#{user.sex})
+  </foreach>
+  
+  </insert>
+  
+  
+  <!--  利用froeach实现update-->
+  
+  <update id="updateUser" parameterType="com.atguigu.crud.bean.User">
+  update user set username=#{username,jdbcType=VARCHAR},sex=#{sex} where id=#{ids} 
+  
+  </update>
+  
+  <!-- mybatis批量更新 -->
+  
+  <update id="bathUpdate" parameterType="java.util.List">
+   update user
+  set  username=
+    <foreach collection="list" item="item" index="index" 
+        separator=" " open="case ID" close="end">
+        when #{item.ids} then #{item.username}
+    </foreach>,
+    sex= <foreach collection="list" item="item" index="index" 
+        separator=" " open="case ID" close="end">
+        when #{item.ids} then #{item.sex}
+    </foreach>
+    where id in
+    <foreach collection="list" index="index" item="item" 
+        separator="," open="(" close=")">
+        #{item.ids,jdbcType=BIGINT}
+    </foreach>
+
+  </update>
+  
+  
+  
+  
+  <!-- 整体批量更新，为空的字段，不进行更新 -->
+  
+  <update id="bathUpdates" parameterType="java.util.List">
+  
+  update user
+        <trim prefix="set" suffixOverrides=",">
+            <trim prefix="username =case" suffix="end,">
+                 <foreach collection="list" item="item" index="index">
+                     <if test="item.username !=null and ! item.username.trim().equals('') ">
+                         when id=#{item.ids} then #{item.username}
+                     </if>
+                     <if test="item.username == null or item.username.trim().equals('') ">
+                         when id=#{item.ids} then user.username
+                     </if>
+                 </foreach>
+            </trim>
+            
+            <trim prefix="sex =case" suffix="end,">
+                 <foreach collection="list" item="item" index="index">
+                     <if test="item.sex !=null and ! item.sex.trim().equals('')">
+                         when id=#{item.ids} then #{item.sex}
+                     </if>
+                      <if test="item.sex == null or item.sex.trim().equals('') ">
+                         when id=#{item.ids} then user.sex
+                     </if> 
+                 </foreach>
+            </trim>
+        </trim>
+        where id in
+        <foreach collection="list" index="index" item="item" separator="," open="(" close=")">
+            #{item.ids,jdbcType=BIGINT}
+        </foreach>
+
+  </update>
+  
+  
+ <!-- mybatis批量插入mysql -->
+  <insert id="bathInsert" useGeneratedKeys="true" keyProperty="ids" parameterType="java.util.List" >
+  
+  insert into user  (username,sex) values 
+  
+  <foreach collection="list" item="item" index="index" separator="),(" open="(" close=")">
+  #{item.username,jdbcType=VARCHAR},#{item.sex,jdbcType=VARCHAR} 
+  </foreach>
+  
+  </insert>
+  
+</mapper>
